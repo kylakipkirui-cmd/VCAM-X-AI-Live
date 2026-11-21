@@ -1,0 +1,48 @@
+name: VCAM X Windows Installer
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'vcam-x-starter/**'
+      - '.github/workflows/windows-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Verify project source
+        shell: pwsh
+        run: |
+          $required = @(
+            'vcam-x-starter/BUILD-INSTALLER-WINDOWS.ps1',
+            'vcam-x-starter/VCAM-X-Setup.iss',
+            'vcam-x-starter/app.py',
+            'vcam-x-starter/requirements.txt'
+          )
+          $missing = $required | Where-Object { -not (Test-Path $_) }
+          if ($missing) {
+            Write-Error ('Project source is incomplete. Missing: ' + ($missing -join ', '))
+          }
+
+      - name: Install Inno Setup 6
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        run: ./vcam-x-starter/BUILD-INSTALLER-WINDOWS.ps1
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VCAM-X-Windows-Installer
+          path: vcam-x-starter/installer-output/*.exe
+          if-no-files-found: error
+          retention-days: 14
